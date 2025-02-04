@@ -4,8 +4,10 @@ import joblib
 import os
 import subprocess
 from sklearn.preprocessing import MinMaxScaler
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # Load trained model and scaler
 MODEL_FILE = "ddos_model.pkl"
@@ -16,6 +18,16 @@ if not os.path.exists(MODEL_FILE):
     exit()
 
 model = joblib.load(MODEL_FILE)
+
+# Function to block IP using Windows Firewall
+def block_ip(ip):
+    try:
+        # Using Windows PowerShell to block IP
+        command = f'New-NetFirewallRule -DisplayName "Block IP {ip}" -Direction Inbound -Protocol TCP -LocalPort Any -RemoteAddress {ip} -Action Block'
+        subprocess.run(['powershell', '-Command', command], check=True)
+        print(f"IP {ip} has been blocked.")
+    except subprocess.CalledProcessError:
+        print(f"Failed to block IP {ip}")
 
 @app.route("/detect_ddos", methods=["GET"])
 def detect_ddos():
@@ -42,12 +54,9 @@ def detect_ddos():
     # Identify malicious IPs
     bad_ips = df[df["Anomaly"] == -1]["Source"].unique().tolist()
 
-    # Block malicious IPs securely
+    # Block malicious IPs securely using Windows Firewall
     for ip in bad_ips:
-        try:
-            subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
-        except subprocess.CalledProcessError:
-            return jsonify({"error": f"Failed to block IP: {ip}"}), 500
+        block_ip(ip)
 
     return jsonify({"status": "DDoS Check Completed", "blocked_ips": bad_ips})
 
