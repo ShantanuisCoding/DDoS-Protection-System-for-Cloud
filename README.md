@@ -59,7 +59,7 @@ npm start
 ### **3️⃣ Run the System**  
 #### **Start Backend**  
 ```bash  
-python app.py  
+python ddos_api.py  
 ```
 #### **Start Frontend**  
 ```bash  
